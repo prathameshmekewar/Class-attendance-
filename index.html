@@ -1,0 +1,1162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Smart Class Attendance</title>
+
+<style>
+*{box-sizing:border-box}
+body{
+margin:0;
+font-family:Arial,sans-serif;
+background:#f1f5f9;
+color:#172033
+}
+.app{max-width:1100px;margin:auto;padding:15px}
+.header{
+background:linear-gradient(135deg,#1e3a8a,#2563eb);
+color:white;
+padding:25px;
+border-radius:20px;
+margin-bottom:18px
+}
+.header h1{margin:0 0 7px;font-size:28px}
+.header p{margin:0;color:#dbeafe}
+
+.stats{
+display:grid;
+grid-template-columns:repeat(4,1fr);
+gap:12px;
+margin-bottom:18px
+}
+.card,.section{
+background:white;
+border-radius:18px;
+box-shadow:0 5px 20px #0000000d
+}
+.card{padding:18px}
+.section{padding:20px;margin-bottom:18px}
+.stat{font-size:28px;font-weight:bold;margin-top:8px}
+.section h2{margin-top:0}
+
+.notice{
+background:#eff6ff;
+border-left:5px solid #2563eb;
+padding:13px;
+border-radius:8px;
+margin-bottom:15px;
+line-height:1.5
+}
+
+.buttons{
+display:flex;
+flex-wrap:wrap;
+gap:10px
+}
+
+button{
+border:0;
+padding:12px 16px;
+border-radius:11px;
+cursor:pointer;
+font-weight:bold;
+background:#2563eb;
+color:white
+}
+button:hover{opacity:.9}
+.green{background:#16a34a}
+.red{background:#dc2626}
+.gray{background:#e2e8f0;color:#172033}
+.orange{background:#ea580c}
+
+input{
+width:100%;
+padding:12px;
+border:1px solid #cbd5e1;
+border-radius:10px;
+margin:6px 0 10px;
+font-size:15px
+}
+
+.form-grid{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:15px
+}
+
+video,#photoPreview{
+width:100%;
+max-height:450px;
+object-fit:contain;
+background:#0f172a;
+border-radius:15px;
+margin-top:15px
+}
+
+#photoPreview{display:none}
+.camera-controls{display:none;margin-top:10px}
+
+table{
+width:100%;
+border-collapse:collapse
+}
+th,td{
+text-align:left;
+padding:12px;
+border-bottom:1px solid #e2e8f0
+}
+
+.status{
+display:inline-block;
+padding:5px 9px;
+border-radius:20px;
+background:#dcfce7;
+color:#166534;
+font-size:12px;
+font-weight:bold
+}
+
+.empty{
+text-align:center;
+color:#64748b;
+padding:25px
+}
+
+.footer{
+text-align:center;
+color:#64748b;
+padding:20px
+}
+
+@media(max-width:700px){
+.stats{grid-template-columns:1fr 1fr}
+.form-grid{grid-template-columns:1fr}
+.header h1{font-size:23px}
+table{font-size:13px}
+th,td{padding:8px}
+}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+<div class="header">
+<h1>📚 Smart Class Attendance</h1>
+<p>Class Photo • Student Registration • Attendance • Reports</p>
+</div>
+
+<div class="stats">
+
+<div class="card">
+👥 Students
+<div class="stat" id="studentCount">0</div>
+</div>
+
+<div class="card">
+✅ Present
+<div class="stat" id="presentCount">0</div>
+</div>
+
+<div class="card">
+❌ Absent
+<div class="stat" id="absentCount">0</div>
+</div>
+
+<div class="card">
+📊 Attendance
+<div class="stat" id="attendancePercent">0%</div>
+</div>
+
+</div>
+
+
+<!-- CLASS PHOTO -->
+
+<section class="section">
+
+<h2>📸 Take Class Photo</h2>
+
+<div class="notice">
+
+<b>Attendance workflow</b><br><br>
+
+📸 Take Class Photo
+→ 🤖 Detect Students
+→ 👀 Teacher Review
+→ ✅ Finalize Attendance
+→ 📊 Report
+
+<br><br>
+
+⚠️ The photo should be reviewed by the teacher before attendance is finalized. Face recognition can make mistakes because of lighting, angle, distance and image quality.
+
+</div>
+
+<div class="buttons">
+
+<button onclick="openCamera()">
+📸 Open Camera
+</button>
+
+<button class="gray" onclick="choosePhoto()">
+🖼️ Choose Photo
+</button>
+
+</div>
+
+<input
+id="photoInput"
+type="file"
+accept="image/*"
+capture="environment"
+style="display:none"
+onchange="photoSelected(event)"
+>
+
+<video
+id="camera"
+autoplay
+playsinline
+style="display:none">
+</video>
+
+<div
+class="buttons camera-controls"
+id="cameraControls">
+
+<button
+class="green"
+onclick="capturePhoto()">
+📷 Capture Class Photo
+</button>
+
+<button
+class="gray"
+onclick="closeCamera()">
+Close Camera
+</button>
+
+</div>
+
+<canvas id="canvas" style="display:none"></canvas>
+
+<img
+id="photoPreview"
+alt="Class photo">
+
+<div id="photoMessage"></div>
+
+</section>
+
+
+<!-- REGISTER STUDENT -->
+
+<section class="section">
+
+<h2>🧑‍🎓 Register Student</h2>
+
+<div class="form-grid">
+
+<div>
+
+<label>Student Name</label>
+
+<input
+id="studentName"
+placeholder="Example: Rahul Patil">
+
+</div>
+
+<div>
+
+<label>Roll Number</label>
+
+<input
+id="rollNumber"
+placeholder="Example: 101">
+
+</div>
+
+</div>
+
+<div class="buttons">
+
+<button onclick="addStudent()">
+➕ Register Student
+</button>
+
+<button
+class="gray"
+onclick="clearForm()">
+Clear
+</button>
+
+</div>
+
+</section>
+
+
+<!-- STUDENTS -->
+
+<section class="section">
+
+<h2>👥 Registered Students</h2>
+
+<div id="studentsTable"></div>
+
+</section>
+
+
+<!-- ATTENDANCE -->
+
+<section class="section">
+
+<h2>✅ Today's Attendance</h2>
+
+<div class="buttons">
+
+<button
+class="green"
+onclick="markAllPresent()">
+✅ Mark All Present
+</button>
+
+<button
+class="orange"
+onclick="resetToday()">
+↻ Reset Today
+</button>
+
+<button
+class="gray"
+onclick="downloadCSV()">
+⬇️ Download CSV
+</button>
+
+</div>
+
+<br>
+
+<div id="attendanceTable"></div>
+
+</section>
+
+
+<!-- UNKNOWN -->
+
+<section class="section">
+
+<h2>❓ Unknown / Unrecognized Faces</h2>
+
+<div id="unknownFaces" class="empty">
+No unknown faces detected.
+</div>
+
+</section>
+
+
+<div class="footer">
+Smart Class Attendance
+</div>
+
+</div>
+
+
+<script>
+
+/* =========================
+   DATA
+========================= */
+
+let students =
+JSON.parse(
+localStorage.getItem("smart_students") || "[]"
+);
+
+let attendance =
+JSON.parse(
+localStorage.getItem("smart_attendance") || "{}"
+);
+
+let cameraStream = null;
+
+
+/* =========================
+   SAVE
+========================= */
+
+function saveData(){
+
+localStorage.setItem(
+"smart_students",
+JSON.stringify(students)
+);
+
+localStorage.setItem(
+"smart_attendance",
+JSON.stringify(attendance)
+);
+
+render();
+
+}
+
+
+/* =========================
+   DATE
+========================= */
+
+function today(){
+
+return new Date()
+.toISOString()
+.slice(0,10);
+
+}
+
+
+/* =========================
+   ADD STUDENT
+========================= */
+
+function addStudent(){
+
+const name =
+document
+.getElementById("studentName")
+.value
+.trim();
+
+const roll =
+document
+.getElementById("rollNumber")
+.value
+.trim();
+
+if(!name || !roll){
+
+alert(
+"Please enter student name and roll number."
+);
+
+return;
+
+}
+
+if(
+students.some(
+student => student.roll === roll
+)
+){
+
+alert(
+"This roll number already exists."
+);
+
+return;
+
+}
+
+students.push({
+
+id:Date.now(),
+
+name:name,
+
+roll:roll,
+
+registeredAt:
+new Date().toISOString()
+
+});
+
+clearForm();
+
+saveData();
+
+alert(
+"Student registered successfully."
+);
+
+}
+
+
+/* =========================
+   CLEAR FORM
+========================= */
+
+function clearForm(){
+
+document.getElementById(
+"studentName"
+).value="";
+
+document.getElementById(
+"rollNumber"
+).value="";
+
+}
+
+
+/* =========================
+   DELETE
+========================= */
+
+function deleteStudent(id){
+
+if(
+!confirm("Delete this student?")
+)return;
+
+students =
+students.filter(
+student => student.id !== id
+);
+
+Object.keys(attendance)
+.forEach(date => {
+
+if(attendance[date]){
+
+delete attendance[date][id];
+
+}
+
+});
+
+saveData();
+
+}
+
+
+/* =========================
+   MARK ALL PRESENT
+========================= */
+
+function markAllPresent(){
+
+if(students.length===0){
+
+alert(
+"Register students first."
+);
+
+return;
+
+}
+
+const date=today();
+
+if(!attendance[date]){
+
+attendance[date]={};
+
+}
+
+students.forEach(student => {
+
+attendance[date][student.id]="Present";
+
+});
+
+saveData();
+
+}
+
+
+/* =========================
+   TOGGLE
+========================= */
+
+function toggleAttendance(id){
+
+const date=today();
+
+if(!attendance[date]){
+
+attendance[date]={};
+
+}
+
+if(
+attendance[date][id]==="Present"
+){
+
+attendance[date][id]="Absent";
+
+}else{
+
+attendance[date][id]="Present";
+
+}
+
+saveData();
+
+}
+
+
+/* =========================
+   RESET
+========================= */
+
+function resetToday(){
+
+if(
+!confirm("Reset today's attendance?")
+)return;
+
+delete attendance[today()];
+
+saveData();
+
+}
+
+
+/* =========================
+   CAMERA
+========================= */
+
+async function openCamera(){
+
+if(
+!navigator.mediaDevices ||
+!navigator.mediaDevices.getUserMedia
+){
+
+alert(
+"Camera is not supported by this browser."
+);
+
+return;
+
+}
+
+try{
+
+cameraStream =
+await navigator.mediaDevices
+.getUserMedia({
+
+video:{
+facingMode:"environment"
+},
+
+audio:false
+
+});
+
+const camera =
+document.getElementById("camera");
+
+camera.srcObject =
+cameraStream;
+
+camera.style.display="block";
+
+document
+.getElementById("cameraControls")
+.style.display="flex";
+
+}catch(error){
+
+alert(
+"Camera permission was denied or camera could not be opened."
+);
+
+}
+
+}
+
+
+/* =========================
+   CLOSE CAMERA
+========================= */
+
+function closeCamera(){
+
+if(cameraStream){
+
+cameraStream
+.getTracks()
+.forEach(
+track => track.stop()
+);
+
+cameraStream=null;
+
+}
+
+document
+.getElementById("camera")
+.style.display="none";
+
+document
+.getElementById("cameraControls")
+.style.display="none";
+
+}
+
+
+/* =========================
+   CAPTURE
+========================= */
+
+function capturePhoto(){
+
+const camera =
+document.getElementById("camera");
+
+const canvas =
+document.getElementById("canvas");
+
+if(!camera.videoWidth){
+
+alert(
+"Camera is not ready yet."
+);
+
+return;
+
+}
+
+canvas.width =
+camera.videoWidth;
+
+canvas.height =
+camera.videoHeight;
+
+const context =
+canvas.getContext("2d");
+
+context.drawImage(
+camera,
+0,
+0,
+canvas.width,
+canvas.height
+);
+
+const image =
+canvas.toDataURL(
+"image/jpeg",
+0.9
+);
+
+showPhoto(image);
+
+closeCamera();
+
+}
+
+
+/* =========================
+   CHOOSE PHOTO
+========================= */
+
+function choosePhoto(){
+
+document
+.getElementById("photoInput")
+.click();
+
+}
+
+
+/* =========================
+   PHOTO SELECTED
+========================= */
+
+function photoSelected(event){
+
+const file =
+event.target.files[0];
+
+if(!file)return;
+
+const reader =
+new FileReader();
+
+reader.onload =
+function(e){
+
+showPhoto(
+e.target.result
+);
+
+};
+
+reader.readAsDataURL(file);
+
+}
+
+
+/* =========================
+   SHOW PHOTO
+========================= */
+
+function showPhoto(image){
+
+const preview =
+document.getElementById(
+"photoPreview"
+);
+
+preview.src=image;
+
+preview.style.display="block";
+
+document
+.getElementById("photoMessage")
+.innerHTML=`
+
+<div class="notice">
+
+📸 <b>Class photo captured.</b>
+
+<br><br>
+
+The photo is ready for attendance review.
+
+<br><br>
+
+⚠️ Automatic face recognition is not included in this basic version. The teacher must confirm attendance using the table.
+
+<br><br>
+
+<button
+class="green"
+onclick="startReview()">
+
+👀 Start Attendance Review
+
+</button>
+
+</div>
+
+`;
+
+}
+
+
+/* =========================
+   REVIEW
+========================= */
+
+function startReview(){
+
+if(students.length===0){
+
+alert(
+"Register students first."
+);
+
+return;
+
+}
+
+document
+.getElementById("attendanceTable")
+.scrollIntoView({
+behavior:"smooth"
+});
+
+alert(
+"Review the students below and mark the correct students Present."
+);
+
+}
+
+
+/* =========================
+   RENDER
+========================= */
+
+function render(){
+
+const date=today();
+
+const a =
+attendance[date] || {};
+
+const present =
+students.filter(
+student =>
+a[student.id]==="Present"
+).length;
+
+const absent =
+students.length-present;
+
+const percent =
+students.length
+?
+Math.round(
+present /
+students.length *
+100
+)
+:0;
+
+document
+.getElementById("studentCount")
+.textContent=
+students.length;
+
+document
+.getElementById("presentCount")
+.textContent=
+present;
+
+document
+.getElementById("absentCount")
+.textContent=
+absent;
+
+document
+.getElementById("attendancePercent")
+.textContent=
+percent+"%";
+
+
+/* STUDENTS */
+
+if(students.length===0){
+
+document
+.getElementById("studentsTable")
+.innerHTML=
+`
+<div class="empty">
+No students registered yet.
+</div>
+`;
+
+}else{
+
+document
+.getElementById("studentsTable")
+.innerHTML=`
+
+<table>
+
+<tr>
+
+<th>Roll</th>
+<th>Name</th>
+<th>Action</th>
+
+</tr>
+
+${students.map(student=>`
+
+<tr>
+
+<td>
+${escapeHTML(student.roll)}
+</td>
+
+<td>
+${escapeHTML(student.name)}
+</td>
+
+<td>
+
+<button
+class="red"
+onclick="deleteStudent(${student.id})">
+
+Delete
+
+</button>
+
+</td>
+
+</tr>
+
+`).join("")}
+
+</table>
+
+`;
+
+}
+
+
+/* ATTENDANCE */
+
+if(students.length===0){
+
+document
+.getElementById("attendanceTable")
+.innerHTML=
+`
+<div class="empty">
+Register students to see attendance.
+</div>
+`;
+
+}else{
+
+document
+.getElementById("attendanceTable")
+.innerHTML=`
+
+<table>
+
+<tr>
+
+<th>Roll</th>
+<th>Name</th>
+<th>Status</th>
+<th>Action</th>
+
+</tr>
+
+${students.map(student=>{
+
+const status =
+a[student.id] ||
+"Absent";
+
+return `
+
+<tr>
+
+<td>
+${escapeHTML(student.roll)}
+</td>
+
+<td>
+${escapeHTML(student.name)}
+</td>
+
+<td>
+
+<span class="status">
+
+${status}
+
+</span>
+
+</td>
+
+<td>
+
+<button
+onclick="toggleAttendance(${student.id})">
+
+${status==="Present"
+?
+"Mark Absent"
+:
+"Mark Present"}
+
+</button>
+
+</td>
+
+</tr>
+
+`;
+
+}).join("")}
+
+</table>
+
+`;
+
+}
+
+}
+
+
+/* =========================
+   CSV
+========================= */
+
+function downloadCSV(){
+
+const date=today();
+
+const a =
+attendance[date] || {};
+
+let csv =
+"Roll Number,Student Name,Date,Status\n";
+
+students.forEach(student=>{
+
+const status =
+a[student.id] ||
+"Absent";
+
+csv +=
+`"${student.roll}","${student.name.replace(/"/g,'""')}","${date}","${status}"\n`;
+
+});
+
+const blob =
+new Blob(
+[csv],
+{
+type:"text/csv"
+}
+);
+
+const url =
+URL.createObjectURL(blob);
+
+const link =
+document.createElement("a");
+
+link.href=url;
+
+link.download=
+"attendance-"+date+".csv";
+
+link.click();
+
+URL.revokeObjectURL(url);
+
+}
+
+
+/* =========================
+   ESCAPE TEXT
+========================= */
+
+function escapeHTML(value){
+
+return String(value)
+.replace(
+/[&<>"']/g,
+function(character){
+
+return {
+
+"&":"&amp;",
+"<":"&lt;",
+">":"&gt;",
+'"':"&quot;",
+"'":"&#039;"
+
+}[character];
+
+});
+
+}
+
+
+/* =========================
+   START
+========================= */
+
+render();
+
+</script>
+
+</body>
+</html>
